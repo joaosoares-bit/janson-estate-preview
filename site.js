@@ -33,6 +33,7 @@
     if (abriu) return; abriu = true;
     if (voo) { voo.cancel(); voo = null; } if (logo) { logo.parentElement.style.width = logo.parentElement.style.height = ''; Object.assign(logo.style, { position: '', left: '', top: '', width: '', height: '', transform: '', transformOrigin: '', maxWidth: '' }); }
     raiz.classList.add('voou', 'aberto'); raiz.classList.remove('abrindo', 'posto'); abre?.remove();
+    dispatchEvent(new Event('je:aberta'));
   }
   if (!abre || !logo || parado() || document.hidden) fimAbertura();
   else {
@@ -41,7 +42,7 @@
     const marca = logo.parentElement; let ponto = null;
     const larguraGrande = () => (innerWidth < 700 ? innerWidth * 0.74 : Math.min(innerWidth * 0.4, 620));
     const poe = () => {
-      if (voando) return;
+      if (voando || abriu) return;
       marca.style.width = marca.style.height = ''; Object.assign(logo.style, { position: '', left: '', top: '', width: '', height: '', transform: '', transformOrigin: '', maxWidth: '' });
       const m = marca.getBoundingClientRect(), r = logo.getBoundingClientRect();
       const G = larguraGrande(), H = G * r.height / r.width;
@@ -53,6 +54,7 @@
     const volta = () => { marca.style.width = marca.style.height = ''; Object.assign(logo.style, { position: '', left: '', top: '', width: '', height: '', transform: '', transformOrigin: '', maxWidth: '' }); };
     poe(); raiz.classList.add('posto');
     addEventListener('resize', poe);
+    addEventListener('je:aberta', () => removeEventListener('resize', poe), { once: true });
     const voa = () => {
       if (abriu) return; poe(); voando = true; const { dx, dy, s } = ponto;
       // arco: primeiro abre para o lado e só depois sobe; um pouco abaixo do tamanho final antes de pousar, como quem assenta
@@ -68,9 +70,7 @@
     setTimeout(voa, 1900);
     setTimeout(() => raiz.classList.add('aberto'), 2550);
     setTimeout(fimAbertura, 3600);
-    const gestos = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
-    const salta = () => { gestos.forEach((g) => removeEventListener(g, salta)); fimAbertura(); };
-    gestos.forEach((g) => addEventListener(g, salta, { passive: true }));
+    addEventListener('keydown', (e) => { if (e.key === 'Escape') fimAbertura(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden) fimAbertura(); });
     if (scrollY > 40) fimAbertura();
   }
@@ -100,6 +100,8 @@
     let pediu = false, alvo = 0, atual = 0, rodando = false, t0 = 0, desenhado = '', cena = 0, salaAtual = 0;
     const url = (j, i) => `${j.pasta}${String(i).padStart(4, '0')}.webp`;
 
+    let essencial = 1, feitos = 0;
+    const pronto = () => pediu && feitos >= essencial;
     function carrega() {
       if (pediu || parado()) return;
       pediu = true;
@@ -107,14 +109,17 @@
       const junta = (i) => { if (i >= 0 && i < n && !visto.has(i)) { visto.add(i); ordem.push(i); } };
       for (let i = 0; i < 20; i++) junta(i);                       // o arranque fica logo fino
       const aqui = Math.round(alvo); for (let d = 0; d < 12; d++) { junta(aqui + d); junta(aqui - d); }
-      for (const passo of [16, 8, 4, 2, 1]) for (let i = 0; i < n; i += passo) junta(i);
+      for (let i = 0; i < n; i += 16) junta(i);
+      essencial = ordem.length; feitos = 0;                          // até aqui é o que tem de chegar antes de soltar o scroll
+      for (const passo of [8, 4, 2, 1]) for (let i = 0; i < n; i += passo) junta(i);
       let proximo = 0, ativos = 0;
       const segue = () => {
         while (ativos < 6 && proximo < ordem.length) {
           const i = ordem[proximo++]; ativos++;
+          const ess = proximo <= essencial;
           fetch(url(j, i)).then((r) => (r.ok ? r.blob() : null)).then((bl) => {
             if (bl && j === jogo) { blobs[i] = bl; if (Math.abs(i - Math.round(atual)) <= JANELA) janela(Math.round(atual)); }
-          }, () => {}).finally(() => { ativos--; segue(); });
+          }, () => {}).finally(() => { ativos--; if (ess) { feitos++; pista.style.setProperty('--carga', String(Math.min(1, feitos / essencial))); talvezSolta(); } segue(); });
         }
       };
       segue();
@@ -137,6 +142,27 @@
       for (const [i, p] of prontos) if (Math.abs(i - c) > JANELA + 6) { larga(p); prontos.delete(i); }
     }
     function esquece() { prontos.forEach(larga); prontos = new Map(); aCaminho = new Set(); blobs = []; }
+    /* O voo carrega DURANTE a abertura e o scroll fica preso até o filme estar coberto (o arranque inteiro e um fotograma em
+       cada 16), para o primeiro gesto já encontrar imagens. Nunca mais de 7 s: numa rede lenta solta-se na mesma. Um fio de
+       bronze por baixo da dica mostra o carregamento. Com «reduzir movimento» não há voo nem trava. */
+    const inicio = performance.now(), TETO = 7000;
+    let travado = false, aberta = raiz.classList.contains('voou');
+    const teclas = new Set([' ', 'PageDown', 'PageUp', 'ArrowDown', 'ArrowUp', 'Home', 'End']);
+    const bloqueia = (e) => { if (travado) e.preventDefault(); };
+    const bloqueiaTecla = (e) => { if (travado && teclas.has(e.key)) e.preventDefault(); };
+    function solta() {
+      if (!travado) return; travado = false; raiz.classList.remove('trava');
+      removeEventListener('wheel', bloqueia); removeEventListener('touchmove', bloqueia); removeEventListener('keydown', bloqueiaTecla);
+      pista.style.setProperty('--carga', '1');
+    }
+    const talvezSolta = () => { if ((pronto() && aberta) || performance.now() - inicio > TETO) solta(); };
+    if (!parado() && scrollY < 40) {
+      travado = true; raiz.classList.add('trava');
+      addEventListener('wheel', bloqueia, { passive: false }); addEventListener('touchmove', bloqueia, { passive: false }); addEventListener('keydown', bloqueiaTecla);
+      addEventListener('je:aberta', () => { aberta = true; talvezSolta(); }, { once: true });
+      setTimeout(solta, TETO);
+    }
+    if (document.readyState === 'complete') carrega(); else addEventListener('load', carrega, { once: true });
     const gestos = ['scroll', 'wheel', 'touchstart', 'pointerdown', 'keydown'];
     const primeiro = () => { gestos.forEach((g) => removeEventListener(g, primeiro)); carrega(); };
     gestos.forEach((g) => addEventListener(g, primeiro, { passive: true }));
