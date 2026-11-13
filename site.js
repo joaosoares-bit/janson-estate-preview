@@ -22,22 +22,52 @@
   aplicaMov();
   bMov?.addEventListener('click', () => { try { lerMov() ? localStorage.removeItem('je-mov') : localStorage.setItem('je-mov', 'reduzido'); } catch {} aplicaMov(); if (parado()) fimAbertura(); });
 
-  /* ── Abertura: o logótipo sobe por trás da linha e voa para o cabeçalho. Acaba sempre (relógio, gesto ou página escondida). ── */
-  const abre = $('.abre'), logoCab = $('.marca img');
-  let abriu = false;
-  function fimAbertura() { if (abriu) return; abriu = true; raiz.classList.add('voou', 'aberto'); abre?.remove(); }
-  if (!abre || parado() || document.hidden) fimAbertura();
+  /* robôs de teste: mailto e tel nunca abrem o Mail ou o telefone do Mac (14/11) */
+  if (navigator.webdriver === true) addEventListener('click', (ev) => { const a = ev.target.closest && ev.target.closest('a[href^="mailto:"], a[href^="tel:"], a[href^="sms:"]'); if (a) ev.preventDefault(); }, true);
+
+  /* ── Abertura (14/11): o logótipo do cabeçalho nasce no centro, desenha-se (CSS), as portas abrem e ele voa em arco para o
+     sítio dele. Mede-se sempre sem transformação (nunca a meio de um voo) e acaba sempre: relógio, gesto ou página escondida. ── */
+  const abre = $('.abre'), logo = $('.marca .logo');
+  let abriu = false, voo = null, voando = false;
+  function fimAbertura() {
+    if (abriu) return; abriu = true;
+    if (voo) { voo.cancel(); voo = null; } if (logo) { logo.parentElement.style.width = logo.parentElement.style.height = ''; Object.assign(logo.style, { position: '', left: '', top: '', width: '', height: '', transform: '', transformOrigin: '', maxWidth: '' }); }
+    raiz.classList.add('voou', 'aberto'); raiz.classList.remove('abrindo', 'posto'); abre?.remove();
+  }
+  if (!abre || !logo || parado() || document.hidden) fimAbertura();
   else {
-    const meio = $('.abre-marca', abre);
-    const mede = () => {
-      const a = meio.getBoundingClientRect(), c = logoCab.getBoundingClientRect();
-      abre.style.setProperty('--dx', `${c.left + c.width / 2 - (a.left + a.width / 2)}px`);
-      abre.style.setProperty('--dy', `${c.top + c.height / 2 - (a.top + a.height / 2)}px`);
-      abre.style.setProperty('--s', String(c.width / a.width));
+    /* o logótipo nasce GRANDE de verdade (largura real, fora do fluxo) e o voo só o reduz: o Safari desenha uma camada
+       ampliada a partir do tamanho pequeno e ficava pixelizado; reduzir fica sempre nítido. A caixa da marca guarda o lugar. */
+    const marca = logo.parentElement; let ponto = null;
+    const larguraGrande = () => (innerWidth < 700 ? innerWidth * 0.74 : Math.min(innerWidth * 0.4, 620));
+    const poe = () => {
+      if (voando) return;
+      marca.style.width = marca.style.height = ''; Object.assign(logo.style, { position: '', left: '', top: '', width: '', height: '', transform: '', transformOrigin: '', maxWidth: '' });
+      const m = marca.getBoundingClientRect(), r = logo.getBoundingClientRect();
+      const G = larguraGrande(), H = G * r.height / r.width;
+      marca.style.width = `${m.width}px`; marca.style.height = `${m.height}px`;
+      Object.assign(logo.style, { position: 'absolute', left: `${r.left - m.left}px`, top: `${r.top - m.top}px`, width: `${G}px`, height: `${H}px`, transformOrigin: '0 0', maxWidth: 'none' });
+      ponto = { s: r.width / G, dx: innerWidth / 2 - G / 2 - r.left, dy: innerHeight * 0.46 - H / 2 - r.top };
+      logo.style.transform = `translate(${ponto.dx}px, ${ponto.dy}px)`;
     };
-    mede(); addEventListener('load', mede, { once: true });
-    setTimeout(() => raiz.classList.add('aberto'), 2300);
-    setTimeout(fimAbertura, 2700);
+    const volta = () => { marca.style.width = marca.style.height = ''; Object.assign(logo.style, { position: '', left: '', top: '', width: '', height: '', transform: '', transformOrigin: '', maxWidth: '' }); };
+    poe(); raiz.classList.add('posto');
+    addEventListener('resize', poe);
+    const voa = () => {
+      if (abriu) return; poe(); voando = true; const { dx, dy, s } = ponto;
+      // arco: primeiro abre para o lado e só depois sobe; um pouco abaixo do tamanho final antes de pousar, como quem assenta
+      voo = logo.animate([
+        { transform: `translate(${dx}px, ${dy}px) scale(1)` },
+        { transform: `translate(${dx * 0.42}px, ${dy * 0.7}px) scale(${s + (1 - s) * 0.38})`, offset: 0.48 },
+        { transform: `translate(0px, 0px) scale(${s * 0.97})`, offset: 0.9 },
+        { transform: `translate(0px, 0px) scale(${s})` },
+      ], { duration: 950, easing: 'cubic-bezier(.6, 0, .25, 1)', fill: 'forwards' });
+      voo.onfinish = () => { if (abriu) return; volta(); voo.cancel(); voo = null; raiz.classList.add('pousou'); pousa(); };
+    };
+    const pousa = () => { raiz.classList.remove('abrindo', 'posto'); setTimeout(fimAbertura, 450); };
+    setTimeout(voa, 1900);
+    setTimeout(() => raiz.classList.add('aberto'), 2550);
+    setTimeout(fimAbertura, 3600);
     const gestos = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
     const salta = () => { gestos.forEach((g) => removeEventListener(g, salta)); fimAbertura(); };
     gestos.forEach((g) => addEventListener(g, salta, { passive: true }));

@@ -20,6 +20,13 @@
   $$('a[data-cta]').forEach((a) => a.addEventListener('click', () => (window.dataLayer = window.dataLayer || []).push({ event: 'cta_click', cta: a.dataset.cta })));
   /* a subscrição do diário abre o email da Paula: diz-se isso à pessoa, para o envio ter um fim visível */
   const aviso = { en: 'Opening your email app with the subscription ready to send.', nl: 'Je e-mailprogramma opent met de inschrijving klaar om te versturen.', es: 'Se abre tu correo con la suscripción lista para enviar.' }[raiz.lang] || '';
-  $$('form[data-news-form]').forEach((f) => f.addEventListener('submit', () => { const e = $('input[type=email]', f); if (!e || !e.checkValidity()) return;
-    let st = $('.news-aviso', f); if (!st) { st = document.createElement('p'); st.className = 'news-aviso'; st.setAttribute('role', 'status'); f.append(st); } st.textContent = aviso; }));
+  const mostraAviso = (f) => { const e = $('input[type=email]', f); if (!e || !e.checkValidity()) return;
+    let st = $('.news-aviso', f); if (!st) { st = document.createElement('p'); st.className = 'news-aviso'; st.setAttribute('role', 'status'); f.append(st); } st.textContent = aviso; };
+  $$('form[data-news-form]').forEach((f) => f.addEventListener('submit', () => mostraAviso(f)));
+  /* robôs de teste (navigator.webdriver): o email e o telefone nunca abrem. O formulário dela muda o endereço da página por código
+     para mailto:, e no Mac o WebKit dos testes entrega isso ao Mail (14/11: dezenas de rascunhos no Mail do João). O aviso continua. */
+  if (navigator.webdriver === true) {
+    addEventListener('submit', (ev) => { const f = ev.target.closest && ev.target.closest('form[data-news-form]'); if (!f) return; ev.preventDefault(); ev.stopImmediatePropagation(); mostraAviso(f); }, true);
+    addEventListener('click', (ev) => { const a = ev.target.closest && ev.target.closest('a[href^="mailto:"], a[href^="tel:"], a[href^="sms:"]'); if (a) ev.preventDefault(); }, true);
+  }
 })();
