@@ -1,0 +1,137 @@
+/* Janson Estate · as páginas interiores dela, vestidas com a UI da nossa landing.
+   O conteúdo, as calculadoras, os filtros e os PDFs são os dela (o CSS dela continua por baixo); aqui muda-se a cara:
+   a nossa paleta (tinta, cal, oliva, bronze), a nossa letra (Cormorant Garamond + Albert Sans), botões limpos de 14 px,
+   nada de rótulos em maiúsculas espaçadas, cabeçalho, gaveta do menu, rodapé e doca de vidro iguais aos da landing. */
+@font-face { font-family: 'Cormorant Garamond'; src: url('../fonts/cormorant-garamond-latin-wght-normal.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
+@font-face { font-family: 'Cormorant Garamond'; src: url('../fonts/cormorant-garamond-latin-wght-italic.woff2') format('woff2'); font-weight: 300 700; font-style: italic; font-display: swap; }
+@font-face { font-family: 'Albert Sans'; src: url('../fonts/albert-sans-latin-wght-normal.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
+:root {
+  --tinta: #1C1B18; --noite: #12110F; --cal: #F7F7F5; --papel: #F3EFE6; --oliva: #3A4A3A; --bronze: #9A7C4F; --bronze-escuro: #76592F;
+  --cinza: #5F5A50; --cinza-escuro: #A8A294; --margem: clamp(20px, 5vw, 84px);
+  --serifa: 'Cormorant Garamond', Georgia, serif; --grotesca: 'Albert Sans', 'Helvetica Neue', Arial, sans-serif;
+  --sai: cubic-bezier(.16, 1, .3, 1); --mola: cubic-bezier(.2, .9, .25, 1); --mola-salto: cubic-bezier(.3, 1.35, .5, 1);
+  --vidro: rgba(250, 250, 248, .9); --vidro-borda: rgba(255, 255, 255, .8);
+  /* as variáveis dela passam a apontar para a nossa marca */
+  --color-ink: #1C1B18; --color-paper: #F7F7F5; --color-cream: #F7F7F5; --color-rule: rgba(28, 27, 24, .14); --color-muted: #5F5A50;
+  --font-display: 'Cormorant Garamond', Georgia, serif; --font-sans: 'Albert Sans', 'Helvetica Neue', Arial, sans-serif;
+  --font-label: 'Albert Sans', 'Helvetica Neue', Arial, sans-serif; --font-mono: 'Albert Sans', 'Helvetica Neue', Arial, sans-serif; --font-serif: 'Cormorant Garamond', Georgia, serif;
+}
+html { scroll-behavior: smooth; }
+html body { background: var(--cal); color: var(--tinta); font-family: var(--grotesca); overflow-x: clip; }
+::selection { background: var(--tinta); color: var(--papel); }
+:focus-visible { outline: 2px solid var(--bronze); outline-offset: 3px; }
+
+/* sem rótulos em maiúsculas espaçadas (régua anti-template): ficam em itálico da serifa */
+html body .eyebrow, html body [class*="eyebrow"], html body .font-label, html body .uppercase, html body [class*="-kicker"] {
+  text-transform: none !important; letter-spacing: 0 !important; font-family: var(--serifa) !important; font-style: italic; font-size: clamp(17px, 1.3vw, 20px) !important; }
+html body h1, html body h2 { letter-spacing: -.014em; text-wrap: balance; }
+html body h1 { font-weight: 400; }
+/* botões dela com a nossa forma: cantos de 14 px, sem maiúsculas, peso firme, mola ao toque */
+html body .btn, html body [class*="btn--"], html body button[popovertarget], html body .cs-row {
+  text-transform: none !important; letter-spacing: 0 !important; font-family: var(--grotesca) !important; font-weight: 600; border-radius: 14px; transition: transform .25s var(--sai), background-color .3s ease, color .3s ease; }
+html body .btn:active, html body [class*="btn--"]:active { transform: scale(.97); }
+html body .btn--ink { background: var(--tinta); color: var(--papel); }
+html body input, html body select, html body textarea { border-radius: 12px; font-family: var(--grotesca); }
+html body img { border-radius: inherit; }
+html body .bg-ink { background-color: var(--tinta); }
+html body .bg-paper { background-color: #EFECE4; }
+/* a folha de contactos dela (popover) em vidro, como a nossa janela */
+html body [popover].contact-sheet { border: 1px solid var(--vidro-borda); border-radius: 26px; background: rgba(250, 250, 248, .9);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6); backdrop-filter: blur(30px) saturate(1.6); box-shadow: 0 40px 100px -30px rgba(0, 0, 0, .55); }
+html body [popover]::backdrop { background: rgba(18, 17, 15, .3); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+
+/* ── Cabeçalho (o da landing) ── */
+.cab { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 24px; padding: 12px var(--margem); background: rgba(28, 27, 24, .97); color: var(--papel); }
+.marca { display: block; margin-right: auto; }
+.marca img { height: 50px; width: auto; filter: brightness(0) invert(1); }
+.cab-nav { display: flex; gap: clamp(14px, 2vw, 30px); font-size: 15px; }
+.cab-nav a, .cab-linguas a { color: var(--papel); text-decoration: none; padding: 12px 0; background: linear-gradient(currentColor, currentColor) 0 calc(100% - 8px) / 0 1px no-repeat; transition: background-size .5s var(--sai); }
+.cab-nav a:hover, .cab-nav a[aria-current="page"] { background-size: 100% 1px; }
+.cab-linguas { display: flex; gap: 10px; font-size: 14px; }
+.cab-linguas a { color: var(--cinza-escuro); min-width: 28px; text-align: center; }
+.cab-linguas a[aria-current="true"] { color: var(--papel); }
+.cab-fala { color: var(--papel); text-decoration: none; padding: 11px 18px; border: 1px solid rgba(243, 239, 230, .4); border-radius: 14px; font-size: 15px; transition: background-color .3s ease, color .3s ease, transform .2s var(--sai); }
+.cab-fala:hover { background: var(--papel); color: var(--tinta); }
+.cab-menu { display: none; height: 44px; padding: 0 16px; border: 1px solid rgba(243, 239, 230, .4); border-radius: 14px; background: transparent; color: var(--papel); font: 500 15px/1 var(--grotesca); }
+/* a gaveta do menu no telemóvel: vidro claro com a página desfocada à volta */
+.gaveta { width: min(420px, 92vw); max-height: 92svh; margin: auto 12px 12px auto; padding: 22px; border: 1px solid var(--vidro-borda); border-radius: 28px; background: rgba(250, 250, 248, .92); color: var(--tinta);
+  -webkit-backdrop-filter: blur(30px) saturate(1.6); backdrop-filter: blur(30px) saturate(1.6); box-shadow: 0 40px 100px -30px rgba(0, 0, 0, .6); }
+.gaveta::backdrop { background: rgba(18, 17, 15, .32); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.gaveta[open] { animation: gaveta-sobe .5s var(--mola) both; }
+@keyframes gaveta-sobe { from { transform: translateY(30px) scale(.97); opacity: 0; } to { transform: none; opacity: 1; } }
+.gaveta nav { display: grid; }
+.gaveta nav a { padding: 12px 4px; border-bottom: 1px solid rgba(28, 27, 24, .1); color: var(--tinta); text-decoration: none; font: 400 30px/1.1 var(--serifa); }
+.gaveta .cab-linguas { margin-top: 16px; }
+.gaveta .cab-linguas a { color: var(--cinza); }
+.gaveta .cab-linguas a[aria-current="true"] { color: var(--tinta); }
+.gaveta-fecha { float: right; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: rgba(28, 27, 24, .07); color: var(--tinta); }
+
+/* ── Rodapé dela, em noite, com a nossa nota ── */
+html body footer.rodape-dela { background: var(--tinta) !important; color: #D6D1C5; border: 0; padding-bottom: 110px; }
+html body footer.rodape-dela a { color: var(--papel); }
+html body footer.rodape-dela img.footer-logo { filter: brightness(0) invert(1); }
+html body footer.rodape-dela .text-muted, html body footer.rodape-dela p { color: var(--cinza-escuro); }
+html body footer.rodape-dela h2, html body footer.rodape-dela h3, html body footer.rodape-dela h4 { color: var(--papel); }
+.rodape-nota { max-width: 78ch; margin: 28px auto 0; padding: 0 clamp(1.25rem, 4vw, 4rem); font-size: 13px; color: var(--cinza-escuro); }
+.rodape-nota a, .mov { color: var(--papel); text-underline-offset: 4px; padding: 12px 0; display: inline-block; }
+.mov { border: 0; background: none; text-decoration: underline; font: inherit; cursor: pointer; }
+.mov[aria-pressed="true"] { color: var(--bronze); }
+
+/* ── A doca de vidro que flutua (a da landing) ── */
+.doca { position: fixed; z-index: 45; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); translate: -50% 0; transition: translate .8s var(--mola-salto); }
+.doca.fora { translate: -50% calc(100% + 40px); }
+.doca-vidro { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 24px; background: rgba(250, 250, 248, .92); border: 1px solid rgba(255, 255, 255, .8);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 6px rgba(18, 17, 15, .12), 0 26px 60px -22px rgba(18, 17, 15, .6); animation: flutua 6.5s ease-in-out 1s infinite; }
+@keyframes flutua { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+.doca a { display: flex; align-items: center; justify-content: center; gap: 10px; height: 50px; padding: 0 20px; border-radius: 18px; font: 600 15px/1 var(--grotesca); text-decoration: none; white-space: nowrap; transition: transform .25s var(--sai), background-color .3s ease; }
+.doca a:active { transform: scale(.95); }
+.doca-wa { color: var(--tinta); }
+.doca-wa svg { color: #1FA855; }
+.doca-wa:hover { background: rgba(28, 27, 24, .06); }
+.doca-r { background: var(--tinta); color: var(--papel); }
+.doca-r:hover { background: #2C2B27; }
+/* o botão flutuante do WhatsApp dela sai: a doca faz esse papel */
+.wa-fab { display: none !important; }
+
+@media (max-width: 1100px) {
+  .cab-nav, .cab > .cab-linguas, .cab-fala { display: none; }
+  .cab-menu { display: block; }
+}
+@media (max-width: 860px) {
+  .marca img { height: 42px; }
+  .doca { left: 12px; right: 12px; translate: 0 0; }
+  .doca.fora { translate: 0 calc(100% + 40px); }
+  .doca-vidro { display: grid; grid-template-columns: 1fr 1fr; }
+  .doca a { padding: 0 10px; font-size: 14px; }
+}
+html[data-movimento="reduzido"] *, html[data-movimento="reduzido"] *::before, html[data-movimento="reduzido"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+html[data-movimento="reduzido"] [data-reveal] { opacity: 1 !important; transform: none !important; }
+@media (prefers-reduced-transparency: reduce) { .gaveta, .doca-vidro, [popover].contact-sheet { background: #FAFAF8; -webkit-backdrop-filter: none; backdrop-filter: none; } }
+
+/* ── Validação (porta funcional): letras de pelo menos 12 px e alvos de toque de pelo menos 44 px ── */
+html body .facts__key, html body .pc-label, html body .spots__km, html body .weather-attr, html body th { font-size: 12px !important; }
+html body footer.rodape-dela a, html body a.eyebrow, html body a[class*="eyebrow"], html body .weather-attr, html body .footer-legal-link, html body .breadcrumb a, html body nav[aria-label*="readcrumb"] a { display: inline-block; padding-block: 10px; }
+.marca { padding-block: 2px; min-height: 44px; display: flex; align-items: center; }
+
+/* ── Validação, volta 2: todos os botões e ligações soltas com 44 × 44 px de toque; letras de rótulo a 12 px no mínimo ── */
+html body footer a, html body a.footer-link, html body a.eyebrow, html body a[class*="eyebrow"], html body .sh-region-link, html body .crumbs__link,
+html body .facts__link, html body .facts__source, html body .ah-src-inline, html body .near__link, html body .ah-cta-secondary, html body .ah-back,
+html body .siblings__link, html body .weather-attr, html body .cl-tab, html body .tools-link, html body .ai-cta-secondary, html body .fx-pick,
+html body .prop-slide-view, html body .journal-card-tool, html body .guide-cta-link, html body .sh-cta-secondary, html body .btn, html body .cs-row,
+html body main a:not(p a):not(li p a):not(.doca a), html body .cab-linguas a {
+  display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; padding-block: 0; }
+html body .cc-select, html body select { min-height: 44px; }
+html body input[type="range"], html body .mc-range { min-height: 44px; }
+html body .near__context, html body .facts__source, html body .plate__geo-value, html body .plate__geo-label, html body .cl-tab, html body .mc-label,
+html body .cl-day-initial, html body .fx-pick, html body .mc-val, html body .btn-label, html body dt, html body .pc-group-head, html body .pc-formula,
+html body .pc-flag, html body .mc-hero-label, html body .fx-value, html body .cl-source, html body .prop-fx-caption, html body .mc-group-head,
+html body .cl-stats, html body .cl-stats * { font-size: max(12px, 0.75rem) !important; }
+html body .btn { font-size: 14px !important; }
+html body .btn--lg { font-size: 15px !important; }
+/* migalhas que não cabem quebram de linha em vez de alargarem a página (NL, telemóvel) */
+html body .crumbs, html body .crumbs__list, html body ol[class*="crumbs"] { flex-wrap: wrap; max-width: 100%; }
+html body .crumbs__item, html body .crumbs__current { white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+.news-aviso { margin-top: 10px; font-size: 14px; color: inherit; }
+html body h1, html body h2, html body h3 { overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
+
+html body .cl-attr, html body .cl-attr a, html body .cc-label, html body .cc-bar-name, html body .cc-pair-label, html body .cc-footnote { font-size: max(12px, 0.75rem) !important; }
