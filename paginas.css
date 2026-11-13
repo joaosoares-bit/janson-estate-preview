@@ -135,3 +135,7 @@ html body .crumbs__item, html body .crumbs__current { white-space: normal; overf
 html body h1, html body h2, html body h3 { overflow-wrap: break-word; -webkit-hyphens: auto; hyphens: auto; }
 
 html body .cl-attr, html body .cl-attr a, html body .cc-label, html body .cc-bar-name, html body .cc-pair-label, html body .cc-footnote { font-size: max(12px, 0.75rem) !important; }
+
+/* o ícone do WhatsApp nunca encolhe e nenhum botão da doca passa do ecrã (ES, 14/11) */
+.doca svg { flex-shrink: 0; }
+.doca a { min-width: 0; white-space: nowrap; }
