@@ -97,29 +97,45 @@
     const vertical = () => innerWidth / innerHeight < 0.8;
     let jogo = vertical() ? cfg.m : cfg.d;
     let blobs = [], prontos = new Map(), aCaminho = new Set();
+    let certos = 0, tapados = 0;   // imagens certas contra imagens repetidas (fotograma vizinho por falta do certo): a medida da fluidez na primeira visita
     let pediu = false, alvo = 0, atual = 0, rodando = false, t0 = 0, desenhado = '', cena = 0, salaAtual = 0;
     const url = (j, i) => `${j.pasta}${String(i).padStart(4, '0')}.webp`;
 
-    let essencial = 1, feitos = 0;
-    const pronto = () => pediu && feitos >= essencial;
+    /* Carregamento (14/11, primeira visita): a câmara nunca pode chegar a uma zona do filme sem imagens. Primeiro o arranque e
+       um fotograma em cada 16 (para saltos longe); depois os fotogramas à frente da câmara, aos blocos de 60, os pares antes
+       dos ímpares, a seguir o caminho dela. O scroll solta quando o primeiro terço do filme (em pares) chegou: numa rede normal
+       isso cabe dentro da abertura das portas. Medida: medir/primeira-visita.mjs. */
+    const PRE = +(new URLSearchParams(location.search).get('pre') || 0.12), BLOCO = 60, EM_PARALELO = 8;
+    let cabeca = 1, feitosCabeca = 0, cobertos = 0;
+    const usavel = (i) => !!(blobs[i] || (i % 2 && blobs[i - 1]));   // um ímpar em falta vê-se pelo par de trás (vizinho, não salta)
+    function cobre0() { while (cobertos < jogo.n && usavel(cobertos)) cobertos++; return cobertos; }
+    const pronto = () => pediu && feitosCabeca >= cabeca && cobre0() >= Math.floor(PRE * jogo.n);
+    function borda(c) { let i = Math.max(0, Math.floor(c)); while (i < jogo.n && usavel(i)) i++; return i - 1; }   // até onde a câmara pode ir sem imagem repetida
     function carrega() {
       if (pediu || parado()) return;
-      pediu = true;
-      const j = jogo, n = j.n, ordem = [], visto = new Set();
-      const junta = (i) => { if (i >= 0 && i < n && !visto.has(i)) { visto.add(i); ordem.push(i); } };
-      for (let i = 0; i < 20; i++) junta(i);                       // o arranque fica logo fino
-      const aqui = Math.round(alvo); for (let d = 0; d < 12; d++) { junta(aqui + d); junta(aqui - d); }
-      for (let i = 0; i < n; i += 16) junta(i);
-      essencial = ordem.length; feitos = 0;                          // até aqui é o que tem de chegar antes de soltar o scroll
-      for (const passo of [8, 4, 2, 1]) for (let i = 0; i < n; i += passo) junta(i);
-      let proximo = 0, ativos = 0;
+      pediu = true; cobertos = 0;
+      const j = jogo, n = j.n, pedido = new Uint8Array(n), fila = [];
+      for (let i = 0; i < Math.min(20, n); i++) fila.push(i);                 // o arranque fica logo fino
+      for (let i = 20; i < n; i += 16) fila.push(i);
+      cabeca = fila.length; feitosCabeca = 0;
+      let k = 0, ativos = 0;
+      const proximo = () => {
+        while (k < fila.length) { const i = fila[k++]; if (!pedido[i]) return i; }
+        const c = Math.max(0, Math.floor(Math.min(atual, alvo)));
+        for (let b0 = c; b0 < n; b0 += BLOCO) for (const par of [0, 1]) for (let i = b0; i < Math.min(n, b0 + BLOCO); i++) if (i % 2 === par && !pedido[i]) return i;
+        for (let i = 0; i < c; i++) if (!pedido[i]) return i;
+        return -1;
+      };
+      const carga = () => pista.style.setProperty('--carga', String(Math.min(1, (feitosCabeca + Math.min(cobre0(), PRE * n) / 2) / (cabeca + PRE * n / 2)).toFixed(3)));
       const segue = () => {
-        while (ativos < 6 && proximo < ordem.length) {
-          const i = ordem[proximo++]; ativos++;
-          const ess = proximo <= essencial;
+        while (ativos < EM_PARALELO) {
+          if (j !== jogo) return;
+          const i = proximo(); if (i < 0) return;
+          pedido[i] = 1; ativos++;
+          const daCabeca = k <= cabeca && fila.includes(i);
           fetch(url(j, i)).then((r) => (r.ok ? r.blob() : null)).then((bl) => {
-            if (bl && j === jogo) { blobs[i] = bl; if (Math.abs(i - Math.round(atual)) <= JANELA) janela(Math.round(atual)); }
-          }, () => {}).finally(() => { ativos--; if (ess) { feitos++; pista.style.setProperty('--carga', String(Math.min(1, feitos / essencial))); talvezSolta(); } segue(); });
+            if (bl && j === jogo) { blobs[i] = bl; if (Math.abs(i - Math.round(atual)) <= JANELA + 8) janela(Math.round(atual)); if (alvo > atual) pede(); }
+          }, () => { pedido[i] = 0; }).finally(() => { ativos--; if (daCabeca) feitosCabeca++; if (travado) { carga(); talvezSolta(); } segue(); });
         }
       };
       segue();
@@ -127,7 +143,8 @@
     const larga = (p) => { if (p.close) p.close(); else if (p.u) URL.revokeObjectURL(p.u); };
     function janela(c) {
       const j = jogo;
-      for (let i = Math.max(0, c - JANELA); i <= Math.min(j.n - 1, c + JANELA); i++) {
+      const de = alvo >= atual ? c - 6 : c - JANELA - 8, ate = alvo >= atual ? c + JANELA + 8 : c + 6;   // 26 imagens prontas, viradas para onde a câmara vai
+      for (let i = Math.max(0, de); i <= Math.min(j.n - 1, ate); i++) {
         if (!blobs[i] || prontos.has(i) || aCaminho.has(i)) continue;
         aCaminho.add(i);
         const guarda = (p) => { aCaminho.delete(i); if (j !== jogo) return larga(p); prontos.set(i, p); pede(); };
@@ -139,7 +156,7 @@
         }
         else createImageBitmap(blobs[i]).then(guarda, () => aCaminho.delete(i));
       }
-      for (const [i, p] of prontos) if (Math.abs(i - c) > JANELA + 6) { larga(p); prontos.delete(i); }
+      for (const [i, p] of prontos) if (i < de - 4 || i > ate + 4) { larga(p); prontos.delete(i); }
     }
     function esquece() { prontos.forEach(larga); prontos = new Map(); aCaminho = new Set(); blobs = []; }
     /* O voo carrega DURANTE a abertura e o scroll fica preso até o filme estar coberto (o arranque inteiro e um fotograma em
@@ -167,7 +184,7 @@
     const primeiro = () => { gestos.forEach((g) => removeEventListener(g, primeiro)); carrega(); };
     gestos.forEach((g) => addEventListener(g, primeiro, { passive: true }));
 
-    const perto = (i) => { for (let d = 0; d <= JANELA + 6; d++) { if (prontos.has(i - d)) return prontos.get(i - d); if (prontos.has(i + d)) return prontos.get(i + d); } return null; };
+    const perto = (i) => { for (let d = 0; d <= JANELA + 14; d++) { if (prontos.has(i - d)) return i - d; if (prontos.has(i + d)) return i + d; } return -1; };
     function cobre(p, alfa) {
       const w = p.naturalWidth || p.width, h = p.naturalHeight || p.height;
       if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
@@ -177,9 +194,9 @@
       const a = Math.floor(atual), f = atual - a, chave = `${a}:${Math.round(f * 24)}`;
       if (chave !== desenhado) {
         janela(a);
-        const base = prontos.get(a) || perto(a);
+        const ib = prontos.has(a) ? a : perto(a), base = prontos.get(ib);
         if (base) {
-          desenhado = chave;
+          desenhado = chave; if (Math.abs(ib - a) <= 1) certos++; else tapados++;
           cobre(base, 1);
           /* entre dois fotogramas vizinhos mistura-se, mas só com a câmara quase parada: a andar depressa a mistura faz fantasma */
           if (prontos.has(a) && prontos.has(a + 1) && f > 0.04 && Math.abs(alvo - atual) < 1.2) cobre(prontos.get(a + 1), f);
@@ -198,16 +215,17 @@
     }
     function tick(t) {
       const dt = Math.min(64, t - t0); t0 = t;
-      const falta = alvo - atual, fps = jogo.n / DUR;
+      const meta = alvo > atual ? Math.min(alvo, Math.max(atual, borda(atual))) : alvo;
+      const falta = meta - atual, fps = jogo.n / DUR;
       /* inércia por cima do scroll nativo, com teto de velocidade: por mais força que o dedo ou a roda deem, a câmara
          nunca passa de 8× o filme, e pára pouco depois do dedo (o scroll manda). Com o palco fora do ecrã a câmara salta (ver rola). */
       let passo = falta * (1 - Math.pow(1 - AMORTECE, dt / 16.667));
       const teto = VMAX * fps * dt / 1000;
       passo = Math.max(-teto, Math.min(teto, passo));
       atual += passo;
-      if (Math.abs(alvo - atual) < 0.004) atual = alvo;
+      if (Math.abs(meta - atual) < 0.004) atual = meta;
       desenha();
-      if (atual !== alvo) requestAnimationFrame(tick); else rodando = false;
+      if (atual !== meta) requestAnimationFrame(tick); else rodando = false;   // à espera de imagens: o próximo fotograma que chegar volta a pô-la a andar
     }
     function pede() { if (parado()) return; desenhado = ''; if (!rodando) { rodando = true; t0 = performance.now(); requestAnimationFrame(tick); } }
     function mostra(i) {
@@ -232,7 +250,7 @@
     }).observe(palco);
     new MutationObserver(() => { if (parado()) { palco.classList.remove('vivo'); cenas.forEach((e) => e.removeAttribute('inert')); } else { mostra(cena); carrega(); rola(); } }).observe(raiz, { attributes: true, attributeFilter: ['data-movimento'] });
     if (parado()) cenas.forEach((e) => e.removeAttribute('inert'));
-    pista.__voo = () => ({ atual, alvo, n: jogo.n, prontos: prontos.size, blobs: blobs.filter(Boolean).length });   // para medir a fluidez (medir/voo.mjs)
+    pista.__voo = () => ({ atual, alvo, n: jogo.n, prontos: prontos.size, blobs: blobs.filter(Boolean).length, certos, tapados, travado });   // para medir a fluidez (medir/voo.mjs)
     rola();
     if (scrollY > 0) primeiro();
   }
